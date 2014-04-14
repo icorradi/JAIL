@@ -98,7 +98,11 @@
 		// Use a placeholder in case it is specified
 		if ( !!options.placeholder ) {
 			elements.each(function(){
-				$(this).attr( "src", options.placeholder );
+				if ( !!$(this).attr('data-background-src') ) {
+					$(this).css( "background-image", _cssUrl(options.placeholder) );
+				} else {
+					$(this).attr( "src", options.placeholder );
+				}
 			});
 		}
 	};
@@ -198,12 +202,12 @@
 
 		if (stack.length === 0) { return; }
 
-		// Check on existence of 'data-src' attribute to verify if the image has been loaded
+		// Check on existence of 'data-src' or 'data-background-src' attributes to verify if the image has been loaded
 		while(true) {
 			if(i ===  stack.length) {
 				break;
 			} else {
-				if ($(stack[i]).attr('data-src')) {
+				if ($(stack[i]).attr('data-src') || $(stack[i]).attr('data-background-src')) {
 					i++;
 				} else {
 					stack.splice( i, 1 );
@@ -267,7 +271,7 @@
 		var bool = true;
 		
 		$(images).each(function(){
-			if ( !!$(this).attr("data-src") ) {
+			if ( !!$(this).attr("data-src") || !!$(this).attr("data-background-src") ) {
 				bool = false;
 			}
 		});
@@ -330,12 +334,18 @@
 	function _loadImage ( options, $img ) {
 		
 		// Use cache Image object to show images only when ready
-		var cache = new Image();
+		var cache = new Image(),
+			src = $img.attr('data-src'),
+			backgroundSrc = $img.attr('data-background-src');
 
 		cache.onload = function() {
-			$img.hide().attr("src", cache.src);
+			if ( !!backgroundSrc ) {
+				$img.hide().css("background-image", _cssUrl(cache.src));
+			} else {
+				$img.hide().attr("src", cache.src);
+			}
 			
-			$img.removeAttr('data-src');
+			$img.removeAttr('data-src').removeAttr('data-background-src');
 			// Images loaded with some effect if existing
 			if( options.effect) {
 
@@ -378,7 +388,22 @@
 			options.error.apply($.jail, args);
 		};
 
-		cache.src = $img.attr("data-src");
+		cache.src = !!backgroundSrc ? backgroundSrc : src;
+	}
+
+	/*
+	* Returns an escaped CSS "url('...')" string for the given URI.
+	*
+	* From http://www.w3.org/TR/CSS21/syndata.html#uri:
+	*
+	*   Some characters appearing in an unquoted URI, such as parentheses, white 
+	*   space characters, single quotes (') and double quotes ("), must be escaped 
+	*   with a backslash so that the resulting URI value is a URI token: '\(', '\)'.
+	*
+	* @param src : an absolute or relative URI
+	*/
+	function _cssUrl ( src ) {
+		return "url('" + src.replace(/'/, "\\'") + "')";
 	}
 		
 	/* 
